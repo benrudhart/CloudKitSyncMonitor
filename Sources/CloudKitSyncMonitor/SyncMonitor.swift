@@ -177,7 +177,7 @@ public final class SyncMonitor {
     ///
     /// `syncError` being `true` means that `NSPersistentCloudKitContainer` sent a notification that included an error.
     public var syncError: Bool {
-        return setupError != nil || importError != nil || exportError != nil
+        networkAvailable == true && lastError != nil
     }
 
     /// Returns `true` if there's no reason that we know of why sync shouldn't be working
@@ -226,7 +226,7 @@ public final class SyncMonitor {
     /// usually caused by something that can be fixed without deleting the DB, so it usually means that sync will just be delayed, unlike exportError, which
     /// usually requires deleting the local DB, thus losing changes.
     ///
-    /// You should examime the error for the cause. You may then be able to at least report it to the user, if not automate a "fix" in your app.
+    /// You should examine the error for the cause. You may then be able to at least report it to the user, if not automate a "fix" in your app.
     public var setupError: Error? {
         if networkAvailable == true, let error = setupState.error {
             return error
@@ -277,8 +277,6 @@ public final class SyncMonitor {
     /// This is true if the network is available in any capacity (Wi-Fi, Ethernet, cellular, carrier pidgeon, etc) - we just care if we can reach iCloud. 
     public private(set) var networkAvailable: Bool? = nil
 
-    public private(set) var loggedIntoIcloud: Bool? = nil
-
     /// The current status of the user's iCloud account - updated automatically if they change it
     public private(set) var iCloudAccountStatus: CKAccountStatus
 
@@ -288,8 +286,7 @@ public final class SyncMonitor {
     ///
     /// This can be helpful in diagnosing "notSyncing" issues or other "partial error"s from which CloudKit thinks it recovered, but didn't really.
     public var lastError: Error? {
-        let states = [setupState, importState, exportState]
-        let errorDates = states.compactMap { state in
+        let errorDates = allSyncStates.compactMap { state in
             if case let .failed(_, endDate, error) = state {
                 return (date: endDate, error: error)
             } else {
@@ -300,6 +297,10 @@ public final class SyncMonitor {
         return errorDates
             .sorted { $0.date > $1.date }
             .first?.error
+    }
+
+    private var allSyncStates: [SyncState] {
+        [setupState, importState, exportState]
     }
 
     // MARK: - Listeners -
