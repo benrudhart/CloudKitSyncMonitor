@@ -89,7 +89,7 @@ import CloudKit
 ///     }
 ///
 @available(iOS 17.0, macCatalyst 14.0, OSX 11, tvOS 14.0, watchOS 10, *)
-@Observable
+@Observable @MainActor
 public final class SyncMonitor {
     /// A singleton to use
     public static let shared = SyncMonitor()
@@ -334,7 +334,6 @@ public final class SyncMonitor {
     /// To make testing possible
     /// Properties need to be set on the main thread for SwiftUI, so we'll do that here
     /// instead of maing setProperties run async code, which is inconvenient for testing.
-    @MainActor
     private func setupCloudKitStateListener() async {
         // Monitor NSPersistentCloudKitContainer sync events
         let eventStream = NotificationCenter.default

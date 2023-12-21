@@ -11,7 +11,8 @@ import XCTest
 import CoreData
 @testable import CloudKitSyncMonitor
 
-@available(iOS 14.0, macCatalyst 14.0, OSX 11, tvOS 14.0, *)
+@available(iOS 17.0, macCatalyst 14.0, OSX 11, tvOS 14.0, *)
+@MainActor
 final class SyncMonitorTests: XCTestCase {
     func testCanDetectImportError() {
         // Given an active network connection
