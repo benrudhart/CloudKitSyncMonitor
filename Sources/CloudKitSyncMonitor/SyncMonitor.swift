@@ -536,32 +536,4 @@ public final class SyncMonitor {
             lastError = event.error
         }
     }
-
-    /// A sync event containing the values from NSPersistentCloudKitContainer.Event that we track
-    internal struct SyncEvent {
-        var type: NSPersistentCloudKitContainer.EventType
-        var startDate: Date?
-        var endDate: Date?
-        var succeeded: Bool
-        var error: Error?
-
-        /// Creates a SyncEvent from explicitly provided values (for testing)
-        init(type: NSPersistentCloudKitContainer.EventType, startDate: Date?, endDate: Date?, succeeded: Bool,
-             error: Error?) {
-            self.type = type
-            self.startDate = startDate
-            self.endDate = endDate
-            self.succeeded = succeeded
-            self.error = error
-        }
-
-        /// Creates a SyncEvent from an NSPersistentCloudKitContainer Event
-        init(from cloudKitEvent: NSPersistentCloudKitContainer.Event) {
-            self.type = cloudKitEvent.type
-            self.startDate = cloudKitEvent.startDate
-            self.endDate = cloudKitEvent.endDate
-            self.succeeded = cloudKitEvent.succeeded
-            self.error = cloudKitEvent.error
-        }
-    }
 }
