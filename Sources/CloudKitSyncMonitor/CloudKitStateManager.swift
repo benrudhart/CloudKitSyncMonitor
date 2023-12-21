@@ -12,12 +12,15 @@ public final class CloudKitStateManager: CloudKitStateObserver {
             return importState
         case .export:
             return exportState
+        @unknown default:
+            assertionFailure()
+            return setupState
         }
     }
 
-    public private(set) var setupState: SyncState = .notStarted
-    public private(set) var importState: SyncState = .notStarted
-    public private(set) var exportState: SyncState = .notStarted
+    public private(set) var setupState: SyncState
+    public private(set) var importState: SyncState
+    public private(set) var exportState: SyncState
 
     var allStates: [SyncState] {
         [setupState, importState, exportState]
@@ -42,31 +45,40 @@ public final class CloudKitStateManager: CloudKitStateObserver {
 
     public var syncStateSummary: SyncSummaryStatus {
         if let lastError {
-            return .error
+            return .error(lastError)
         }
 
         switch (setupState, importState, exportState) {
         case (.succeeded, .notStarted, .notStarted):
             return .notSyncing
+
         case (.succeeded, .succeeded, .succeeded):
             return .succeeded
+
         case (.notStarted, .succeeded, .succeeded):
             // sometimes no `.setup` event is emitted. Ignore those cases
             return .succeeded
+
         case (.notStarted, .notStarted, .notStarted):
             return .notStarted
+            
         default:
             let inProgress = allStates.contains { $0.inProgress }
             return inProgress ? .inProgress : .unknown
         }
     }
 
-
-    // MARK: - Listeners -
-
     private var observeTask: Task<Void, Never>?
 
-    init() {}
+    init(
+        setupState: SyncState = .notStarted,
+        importState: SyncState = .notStarted,
+        exportState: SyncState = .notStarted
+    ) {
+        self.setupState = setupState
+        self.importState = importState
+        self.exportState = exportState
+    }
 
     public func observeSyncStates() {
         observeTask?.cancel()

@@ -4,7 +4,7 @@ import SwiftUI
 public enum SyncSummaryStatus {
     case noNetwork
     case accountNotAvailable
-    case error
+    case error(Error)
     case notSyncing
     case notStarted
     case inProgress
