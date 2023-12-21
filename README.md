@@ -107,7 +107,7 @@ if SyncMonitor.shared.syncError {
 its "setup" event completed successfully, but that no "import" event was started, and no errors were reported. This can happen, for example,
 if the OS has presented a "please re-enter your password" notification/popup (in which case, CloudKit consider's the user's account
 "available", but NSPersistentCloudKitContainer won't actually be able to sync). `notSyncing`, like `isBroken`, take things like network
-availabity and the user's iCloud login status into account.
+availability and the user's iCloud login status into account.
 
 Detecting error conditions is important because the usual "fix" for CloudKit not syncing is to delete the local database. This
 is fine if your import stopped working, but if the export stopped working, this means that your user will lose any changes they made between
@@ -118,7 +118,7 @@ user's data and your app's reputation.
 For more detail, the `setupState`, `importState`, and `exportState` properties return enum values that contain other details provided by
 `NSPersistentCloudKitContainer`, e.g. the start and end times of each event.
 
-You could, for example, display details about the user's sync status includng when sync events started and finished like this:
+You could, for example, display details about the user's sync status including when sync events started and finished like this:
 
 ```swift
 fileprivate var dateFormatter: DateFormatter = {
@@ -135,12 +135,12 @@ print("Export state: \(stateText(for: SyncMonitor.shared.exportState))")
 /// Returns a user-displayable text description of the sync state
 func stateText(for state: SyncMonitor.SyncState) -> String {
     switch state {
-    case .notStarted:
+    case .notUndetermined:
         return "Not started"
     case .inProgress(started: let date):
         return "In progress since \(dateFormatter.string(from: date))"
     case let .succeeded(started: _, ended: endDate):
-        return "Suceeded at \(dateFormatter.string(from: endDate))"
+        return "Succeeded at \(dateFormatter.string(from: endDate))"
     case let .failed(started: _, ended: endDate, error: _):
         return "Failed at \(dateFormatter.string(from: endDate))"
     }

@@ -48,32 +48,32 @@ public final class CloudKitStateManager: CloudKitStateObserver {
             return .error(lastError)
         }
 
+        if allStates.contains(where: { $0.inProgress }) {
+            return .inProgress
+        }
+
         switch (setupState, importState, exportState) {
-        case (.succeeded, .notStarted, .notStarted):
+        case (.succeeded, .undetermined, .undetermined):
             return .notSyncing
 
         case (.succeeded, .succeeded, .succeeded):
             return .succeeded
 
-        case (.notStarted, .succeeded, .succeeded):
+        case (.undetermined, .succeeded, .succeeded):
             // sometimes no `.setup` event is emitted. Ignore those cases
             return .succeeded
 
-        case (.notStarted, .notStarted, .notStarted):
-            return .notStarted
-            
         default:
-            let inProgress = allStates.contains { $0.inProgress }
-            return inProgress ? .inProgress : .unknown
+            return .unknown
         }
     }
 
     private var observeTask: Task<Void, Never>?
 
     init(
-        setupState: SyncState = .notStarted,
-        importState: SyncState = .notStarted,
-        exportState: SyncState = .notStarted
+        setupState: SyncState = .undetermined,
+        importState: SyncState = .undetermined,
+        exportState: SyncState = .undetermined
     ) {
         self.setupState = setupState
         self.importState = importState

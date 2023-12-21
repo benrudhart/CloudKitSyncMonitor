@@ -6,7 +6,7 @@ public enum SyncSummaryStatus {
     case accountNotAvailable
     case error(Error)
     case notSyncing
-    case notStarted
+    case undetermined
     case inProgress
     case succeeded
     case unknown
@@ -24,7 +24,7 @@ extension SyncSummaryStatus {
             return "exclamationmark.icloud"
         case .notSyncing:
             return "xmark.icloud"
-        case .notStarted:
+        case .undetermined:
             return "bolt.horizontal.icloud"
         case .inProgress:
             return "arrow.triangle.2.circlepath.icloud"
@@ -46,8 +46,8 @@ extension SyncSummaryStatus {
             return "Error"
         case .notSyncing:
             return "Not syncing to iCloud"
-        case .notStarted:
-            return "Sync not started"
+        case .undetermined:
+            return "Sync State is not yet determined"
         case .inProgress:
             return "Syncing..."
         case .succeeded:
@@ -68,7 +68,7 @@ extension SyncSummaryStatus {
             return .red
         case .notSyncing:
             return .red
-        case .notStarted:
+        case .undetermined:
             return .gray
         case .inProgress:
             return .gray
@@ -82,7 +82,7 @@ extension SyncSummaryStatus {
     /// Returns true if the state indicates that sync is broken
     public var isBroken: Bool {
         switch self {
-        case .noNetwork, .accountNotAvailable, .notStarted, .inProgress, .succeeded:
+        case .noNetwork, .accountNotAvailable, .undetermined, .inProgress, .succeeded:
             return false
         case .error, .notSyncing, .unknown:
             return true

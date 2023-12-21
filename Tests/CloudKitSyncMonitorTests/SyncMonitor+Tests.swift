@@ -23,7 +23,7 @@ extension SyncMonitor {
         let importState: SyncState
         switch importSuccessful {
         case .none:
-            importState = .notStarted
+            importState = .undetermined
         case .some(true):
             importState = .succeeded(started: startDate, ended: endDate)
         case .some(false):
@@ -53,7 +53,7 @@ struct CKStateObserverMock: CloudKitStateObserver {
     func observeSyncStates() {}
     
     func syncState(stateType: NSPersistentCloudKitContainer.EventType) -> CloudKitSyncMonitor.SyncState {
-        .notStarted
+        .undetermined
     }
 }
 

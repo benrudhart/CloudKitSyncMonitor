@@ -3,7 +3,7 @@ import Foundation
 /// The state of a CloudKit import, export, or setup event as reported by an `NSPersistentCloudKitContainer` notification
 public enum SyncState {
     /// No event has been reported
-    case notStarted
+    case undetermined
 
     /// A notification with a start date was received, but it had no end date.
     case inProgress(started: Date)
@@ -26,8 +26,8 @@ extension SyncState {
         return false
     }
 
-    var notStarted: Bool {
-        if case .notStarted = self { return true }
+    var undetermined: Bool {
+        if case .undetermined = self { return true }
         return false
     }
 
@@ -52,9 +52,9 @@ extension SyncState {
     ///
     /// Note that this property will report all errors, including those caused by normal things like being offline.
     /// See also `SyncMonitor.importError` and `SyncMonitor.exportError` for more intelligent error reporting.
-    var error: Error? {
+    public var error: Error? {
         switch self {
-        case .notStarted, .inProgress, .succeeded:
+        case .undetermined, .inProgress, .succeeded:
             return nil
         case .failed(_, _, let error):
             return error

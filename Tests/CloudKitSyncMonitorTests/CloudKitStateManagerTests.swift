@@ -89,13 +89,13 @@ final class CloudKitStateManagerTests: XCTestCase {
         XCTAssertTrue(stateManager.exportState.inProgress)
     }
 
-    func testSetsStatusToNotStartedOnStartup() {
+    func testSetsStatusToUndeterminedOnStartup() {
         // Given an active network connection
-        let stateManager = CloudKitStateManager(importState: .notStarted)
+        let stateManager = CloudKitStateManager(importState: .undetermined)
 
         // When we check status before an event has been reported
-        // Then the status is ".notStarted"
-        XCTAssertTrue(stateManager.importState.notStarted)
+        // Then the status is ".undetermined"
+        XCTAssertTrue(stateManager.importState.undetermined)
     }
 }
 
