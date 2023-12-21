@@ -89,7 +89,7 @@ import CloudKit
 ///     }
 ///
 @available(iOS 17.0, macCatalyst 14.0, OSX 11, tvOS 14.0, watchOS 10, *)
-@Observable @MainActor
+@Observable
 public final class SyncMonitor {
     /// A singleton to use
     public static let shared = SyncMonitor()
@@ -149,7 +149,7 @@ public final class SyncMonitor {
             return .notSyncing
         }
 
-        if allSyncStates.allSatisfy({ $0.notStarted }) {
+        if [importState, exportState].allSatisfy({ $0.notStarted }) {
             return .notStarted
         }
 
@@ -270,15 +270,22 @@ public final class SyncMonitor {
     }
 
     // MARK: - Specific Status Properties -
+    let cloudStateManager = CloudStateManager()
 
     /// The state of `NSPersistentCloudKitContainer`'s "setup" event
-    public private(set) var setupState: SyncState = .notStarted
+    public var setupState: SyncState {
+        cloudStateManager.setupState
+    }
 
     /// The state of `NSPersistentCloudKitContainer`'s "import" event
-    public private(set) var importState: SyncState = .notStarted
+    public var importState: SyncState {
+        cloudStateManager.importState
+    }
 
     /// The state of `NSPersistentCloudKitContainer`'s "export" event
-    public private(set) var exportState: SyncState = .notStarted
+    public var exportState: SyncState {
+        cloudStateManager.exportState
+    }
 
     /// Returns `true` if the network is available in any capacity (Wi-Fi, Ethernet, cellular, carrier pidgeon, etc) - we just care if we can reach iCloud.
     public var isNetworkAvailable: Bool {
@@ -326,9 +333,6 @@ public final class SyncMonitor {
                 iCloudAccountStatus: CKAccountStatus? = nil,
                 lastErrorText: String? = nil,
                 listen: Bool = true) {
-        self.setupState = setupState
-        self.importState = importState
-        self.exportState = exportState
         self.iCloudAccountStatus = iCloudAccountStatus ?? .couldNotDetermine
 
         guard listen else { return }
@@ -338,59 +342,22 @@ public final class SyncMonitor {
 
     func observeStates() {
         networkMonitor.startObserving()
-        
+        cloudStateManager.observeSyncStates()
+
         observeTask = Task {
-            async let cloudKitState = setupCloudKitStateListener()
-            async let iCloudState = setupiCloudAccountStateListener()
-            await _ = (cloudKitState, iCloudState)
-        }
-    }
-
-    /// To make testing possible
-    /// Properties need to be set on the main thread for SwiftUI, so we'll do that here
-    /// instead of maing setProperties run async code, which is inconvenient for testing.
-    private func setupCloudKitStateListener() async {
-        // Monitor NSPersistentCloudKitContainer sync events
-        let eventStream = NotificationCenter.default
-            .notifications(named: NSPersistentCloudKitContainer.eventChangedNotification)
-            .compactMap { notification in
-                let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
-                return event as? NSPersistentCloudKitContainer.Event
-            }
-
-        for await event in eventStream {
-            setState(from: event)
+            await setupiCloudAccountStateListener()
         }
     }
 
     /// Monitor changes to the iCloud account (e.g. login/logout)
     private func setupiCloudAccountStateListener() async  {
         self.iCloudAccountStatus = (try? await CKContainer.default().accountStatus()) ?? .couldNotDetermine
-
         let stateStream = NotificationCenter.default
             .notifications(named: .CKAccountChanged)
             .map { _ in (try? await CKContainer.default().accountStatus()) ?? .couldNotDetermine }
 
         for await stateResult in stateStream {
             self.iCloudAccountStatus = stateResult
-        }
-    }
-
-    // MARK: - Processing NSPersistentCloudKitContainer events -
-
-    /// Set the appropriate State property (importState, exportState, setupState) based on the provided event
-    func setState(from event: SyncEvent) {
-        let state = SyncState(event: event)
-
-        switch event.type {
-        case .setup:
-            setupState = state
-        case .import:
-            importState = state
-        case .export:
-            exportState = state
-        @unknown default:
-            assertionFailure("NSPersistentCloudKitContainer added a new event type.")
         }
     }
 }
