@@ -3,14 +3,64 @@ import CloudKit
 import CoreData
 
 @Observable
-final class CloudStateManager {
-    private(set) var setupState: SyncState = .notStarted
-    private(set) var importState: SyncState = .notStarted
-    private(set) var exportState: SyncState = .notStarted
+public final class CloudStateManager {
+    public func syncState(stateType: NSPersistentCloudKitContainer.EventType) -> SyncState {
+        switch stateType {
+        case .setup:
+            return setupState
+        case .import:
+            return importState
+        case .export:
+            return exportState
+        }
+    }
 
-    private var allSyncStates: [SyncState] {
+    public private(set) var setupState: SyncState = .notStarted
+    public private(set) var importState: SyncState = .notStarted
+    public private(set) var exportState: SyncState = .notStarted
+
+    var allStates: [SyncState] {
         [setupState, importState, exportState]
     }
+
+    /// Contains the last Error encountered.
+    ///
+    /// This can be helpful in diagnosing "notSyncing" issues or other "partial error"s from which CloudKit thinks it recovered, but didn't really.
+    var lastError: Error? {
+        let errorDates = allStates.compactMap { state in
+            if case let .failed(_, endDate, error) = state {
+                return (date: endDate, error: error)
+            } else {
+                return nil
+            }
+        }
+
+        return errorDates
+            .sorted { $0.date > $1.date }
+            .first?.error
+    }
+
+    var syncStateSummary: SyncSummaryStatus {
+        if let lastError {
+            return .error
+        }
+
+        switch (setupState, importState, exportState) {
+        case (.succeeded, .notStarted, .notStarted):
+            return .notSyncing
+        case (.succeeded, .succeeded, .succeeded):
+            return .succeeded
+        case (.notStarted, .succeeded, .succeeded):
+            // sometimes no `.setup` event is emitted. Ignore those cases
+            return .succeeded
+        case (.notStarted, .notStarted, .notStarted):
+            return .notStarted
+        default:
+            let inProgress = allStates.contains { $0.inProgress }
+            return inProgress ? .inProgress : .unknown
+        }
+    }
+
 
     // MARK: - Listeners -
 
