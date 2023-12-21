@@ -6,7 +6,6 @@
 //
 
 import CoreData
-import Network
 import CloudKit
 
 /// An object, usually used as a singleton, that provides, and publishes, the current state of `NSPersistentCloudKitContainer`'s sync
@@ -134,7 +133,7 @@ public final class SyncMonitor {
     ///     }
     ///
     public var syncStateSummary: SyncSummaryStatus {
-        if networkAvailable == false { return .noNetwork }
+        if isNetworkAvailable == false { return .noNetwork }
         guard case .available = iCloudAccountStatus else { return .accountNotAvailable }
         if syncError { return .error }
         if notSyncing { return .notSyncing }
@@ -177,7 +176,7 @@ public final class SyncMonitor {
     ///
     /// `syncError` being `true` means that `NSPersistentCloudKitContainer` sent a notification that included an error.
     public var syncError: Bool {
-        networkAvailable == true && lastError != nil
+        isNetworkAvailable == true && lastError != nil
     }
 
     /// Returns `true` if there's no reason that we know of why sync shouldn't be working
@@ -185,7 +184,7 @@ public final class SyncMonitor {
     /// That is, the user's iCloud account status is "available", the network is available, there are no recorded sync errors, and setup is complete and succeeded.
     public var shouldBeSyncing: Bool {
         if case .available = iCloudAccountStatus,
-           networkAvailable == true,
+           isNetworkAvailable == true,
            !syncError,
            case .succeeded = setupState {
             return true
@@ -228,7 +227,7 @@ public final class SyncMonitor {
     ///
     /// You should examine the error for the cause. You may then be able to at least report it to the user, if not automate a "fix" in your app.
     public var setupError: Error? {
-        if networkAvailable == true, let error = setupState.error {
+        if isNetworkAvailable == true, let error = setupState.error {
             return error
         }
         return nil
@@ -236,7 +235,7 @@ public final class SyncMonitor {
 
     /// If not `nil`, there is a problem with CloudKit's import.
     public var importError: Error? {
-        if networkAvailable == true, let error = importState.error {
+        if isNetworkAvailable == true, let error = importState.error {
             return error
         }
         return nil
@@ -255,7 +254,7 @@ public final class SyncMonitor {
     /// the moment it happens. It specifically tests that the network is available and that an error was reported (including error text). This means that sync
     /// _should_ be working (that is, they're online), but failed. The user, or your application, will likely need to take action to correct the problem.
     public var exportError: Error? {
-        if networkAvailable == true, let error = exportState.error {
+        if isNetworkAvailable == true, let error = exportState.error {
             return error
         }
         return nil
@@ -272,10 +271,12 @@ public final class SyncMonitor {
     /// The state of `NSPersistentCloudKitContainer`'s "export" event
     public private(set) var exportState: SyncState = .notStarted
 
-    /// Is the network available?
-    ///
-    /// This is true if the network is available in any capacity (Wi-Fi, Ethernet, cellular, carrier pidgeon, etc) - we just care if we can reach iCloud. 
-    public private(set) var networkAvailable: Bool? = nil
+    /// Returns `true` if the network is available in any capacity (Wi-Fi, Ethernet, cellular, carrier pidgeon, etc) - we just care if we can reach iCloud.
+    public var isNetworkAvailable: Bool {
+        networkMonitor.isNetworkAvailable
+    }
+
+    private var networkMonitor: NetworkMonitor = NetworkManager()
 
     /// The current status of the user's iCloud account - updated automatically if they change it
     public private(set) var iCloudAccountStatus: CKAccountStatus
@@ -307,27 +308,18 @@ public final class SyncMonitor {
 
     private var observeTask: Task<Void, Never>?
 
-    /// Network path monitor that's used to track whether we can reach the network at all
-    //    fileprivate let monitor: NetworkMonitor = NWPathMonitor()
-    private let monitor = NWPathMonitor()
-
-    /// The queue on which we'll run our network monitor
-    private let monitorQueue = DispatchQueue(label: "NetworkMonitor")
-
-    // MARK: - Initializers -
+    // MARK: - Initializers
 
     /// Creates a new sync monitor and sets up listeners to sync and network changes
     public init(setupState: SyncState = .notStarted, 
                 importState: SyncState = .notStarted,
-                exportState: SyncState = .notStarted, 
-                networkAvailable: Bool? = nil,
+                exportState: SyncState = .notStarted,
                 iCloudAccountStatus: CKAccountStatus? = nil,
                 lastErrorText: String? = nil,
                 listen: Bool = true) {
         self.setupState = setupState
         self.importState = importState
         self.exportState = exportState
-        self.networkAvailable = networkAvailable
         self.iCloudAccountStatus = iCloudAccountStatus ?? .couldNotDetermine
 
         guard listen else { return }
@@ -335,7 +327,7 @@ public final class SyncMonitor {
         observeTask = Task {
             await setupCloudKitStateListener()
             await setupiCloudAccountStateListener()
-            setupNetworkStateListener()
+            networkMonitor.startObserving()
         }
     }
 
@@ -355,26 +347,6 @@ public final class SyncMonitor {
         for await event in eventStream {
             setState(from: event)
         }
-    }
-
-    /// Update the network status when the OS reports a change. Note that we ignore whether the connection is
-    /// expensive or not - we just care whether iCloud is _able_ to sync. If there's no network,
-    /// NSPersistentCloudKitContainer will try to sync but report an error. We consider that a real error unless
-    /// the network is not available at all. If it's available but expensive, it's still an error.
-    /// Ostensively, if the user's device has iCloud syncing turned off (e.g. due to low power mode or not
-    /// allowing syncing over cellular connections), NSPersistentCloudKitContainer won't try to sync.
-    /// If that assumption is incorrect, we'll need to update the logic in this class.
-    private func setupNetworkStateListener() {
-        monitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                #if os(watchOS)
-                self.networkAvailable = (path.availableInterfaces.count > 0)
-                #else
-                self.networkAvailable = (path.status == .satisfied)
-                #endif
-            }
-        }
-        monitor.start(queue: monitorQueue)
     }
 
     /// Monitor changes to the iCloud account (e.g. login/logout)
@@ -413,11 +385,12 @@ extension SyncMonitor {
     /// For Testing Purposes: Convenience initializer that creates a SyncMonitor with preset state values for testing or previews
     convenience init(
         setupSuccessful: Bool = true,
-        importSuccessful: Bool = true,
+        importSuccessful: Bool? = true,
         exportSuccessful: Bool = true,
         networkAvailable: Bool = true,
         iCloudAccountStatus: CKAccountStatus = .available,
-        errorText: String?
+        errorText: String? = nil,
+        listen: Bool
     ) {
         let error = errorText.map { NSError(domain: $0, code: 0, userInfo: nil) }
         let startDate = Date(timeIntervalSinceNow: -15) // a 15 second sync. :o
@@ -426,15 +399,28 @@ extension SyncMonitor {
         let setupState: SyncState = setupSuccessful
             ? SyncState.succeeded(started: startDate, ended: endDate)
             : .failed(started: startDate, ended: endDate, error: error)
-        let importState: SyncState = importSuccessful
-            ? .succeeded(started: startDate, ended: endDate)
-            : .failed(started: startDate, ended: endDate, error: error)
+        
+        let importState: SyncState
+        switch importSuccessful {
+        case .none:
+            importState = .notStarted
+        case .some(true):
+            importState = .succeeded(started: startDate, ended: endDate)
+        case .some(false):
+            importState = .failed(started: startDate, ended: endDate, error: error)
+        }
+
         let exportState: SyncState = exportSuccessful
             ? .succeeded(started: startDate, ended: endDate)
             : .failed(started: startDate, ended: endDate, error: error)
 
-        self.init(setupState: setupState, importState: importState, exportState: exportState, lastErrorText: errorText, listen: false)
-        self.networkAvailable = networkAvailable
+        self.init(setupState: setupState, importState: importState, exportState: exportState, lastErrorText: errorText, listen: listen)
+        self.networkMonitor = NetworkMonitorMock(isNetworkAvailable: networkAvailable)
         self.iCloudAccountStatus = iCloudAccountStatus
+
+        struct NetworkMonitorMock: NetworkMonitor {
+            var isNetworkAvailable: Bool
+            func startObserving() {}
+        }
     }
 }

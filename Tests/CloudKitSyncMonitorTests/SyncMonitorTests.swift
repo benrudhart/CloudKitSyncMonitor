@@ -36,7 +36,7 @@ final class SyncMonitorTests: XCTestCase {
 
     func testCanDetectExportError() {
         // Given an active network connection
-        let syncStatus = SyncMonitor(networkAvailable: true, listen: false)
+        let syncStatus = SyncMonitor(importSuccessful: nil, networkAvailable: true, listen: false)
 
         // When NSPersistentCloudKitContainer reports an unsuccessful import
         let errorText = "I don't like clouds"
@@ -114,7 +114,7 @@ final class SyncMonitorTests: XCTestCase {
 
     func testSetsStatusToNotStartedOnStartup() {
         // Given an active network connection
-        let syncStatus: SyncMonitor = SyncMonitor(networkAvailable: true, listen: false)
+        let syncStatus: SyncMonitor = SyncMonitor(importSuccessful: nil, networkAvailable: true, listen: false)
 
         // When we check status before an event has been reported
         let status = syncStatus.importState
@@ -123,7 +123,7 @@ final class SyncMonitorTests: XCTestCase {
         if case .notStarted = status {
             XCTAssert(true)
         } else {
-            XCTAssert(false, "importState should be .notStarted")
+            XCTAssert(false, "importState should be .notStarted got \(status)")
         }
     }
 
