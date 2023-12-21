@@ -370,30 +370,6 @@ public final class SyncMonitor {
             .store(in: &disposables)
     }
 
-    /// Convenience initializer that creates a SyncMonitor with preset state values for testing or previews
-    ///
-    ///     let syncMonitor = SyncMonitor(importSuccessful: false, errorText: "Cloud distrupted by weather net")
-    public init(setupSuccessful: Bool = true, importSuccessful: Bool = true, exportSuccessful: Bool = true,
-                networkAvailable: Bool = true, iCloudAccountStatus: CKAccountStatus = .available, errorText: String?) {
-        var error: Error? = nil
-        if let errorText = errorText {
-            error = NSError(domain: errorText, code: 0, userInfo: nil)
-        }
-        let startDate = Date(timeIntervalSinceNow: -15) // a 15 second sync. :o
-        let endDate = Date()
-        self.setupState = setupSuccessful
-            ? SyncState.succeeded(started: startDate, ended: endDate)
-            : .failed(started: startDate, ended: endDate, error: error)
-        self.importState = importSuccessful
-            ? .succeeded(started: startDate, ended: endDate)
-            : .failed(started: startDate, ended: endDate, error: error)
-        self.exportState = exportSuccessful
-            ? .succeeded(started: startDate, ended: endDate)
-            : .failed(started: startDate, ended: endDate, error: error)
-        self.networkAvailable = networkAvailable
-        self.iCloudAccountStatus = iCloudAccountStatus
-    }
-
     /// Checks the current status of the user's iCloud account and updates our iCloudAccountStatus property
     ///
     /// When SyncMonitor is listening to notifications (which it does unless you tell it not to when initializing), this method is called each time CKContainer
@@ -430,5 +406,35 @@ public final class SyncMonitor {
         if let error = event.error {
             lastError = error
         }
+    }
+}
+
+extension SyncMonitor {
+    /// For Testing Purposes: Convenience initializer that creates a SyncMonitor with preset state values for testing or previews
+    convenience init(
+        setupSuccessful: Bool = true,
+        importSuccessful: Bool = true,
+        exportSuccessful: Bool = true,
+        networkAvailable: Bool = true,
+        iCloudAccountStatus: CKAccountStatus = .available,
+        errorText: String?
+    ) {
+        let error = errorText.map { NSError(domain: $0, code: 0, userInfo: nil) }
+        let startDate = Date(timeIntervalSinceNow: -15) // a 15 second sync. :o
+        let endDate = Date.now
+
+        let setupState: SyncState = setupSuccessful
+            ? SyncState.succeeded(started: startDate, ended: endDate)
+            : .failed(started: startDate, ended: endDate, error: error)
+        let importState: SyncState = importSuccessful
+            ? .succeeded(started: startDate, ended: endDate)
+            : .failed(started: startDate, ended: endDate, error: error)
+        let exportState: SyncState = exportSuccessful
+            ? .succeeded(started: startDate, ended: endDate)
+            : .failed(started: startDate, ended: endDate, error: error)
+
+        self.init(setupState: setupState, importState: importState, exportState: exportState, lastErrorText: errorText, listen: false)
+        self.networkAvailable = networkAvailable
+        self.iCloudAccountStatus = iCloudAccountStatus
     }
 }
