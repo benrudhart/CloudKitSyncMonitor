@@ -20,8 +20,7 @@ final class SyncMonitorTests: XCTestCase {
         // When NSPersistentCloudKitContainer reports an unsuccessful import
         let errorText = "I don't like clouds"
         let error = NSError(domain: errorText, code: 0, userInfo: nil)
-        let event = SyncEvent(type: .import, startDate: Date(), endDate: Date(), succeeded: false,
-                              error: error)
+        let event = SyncEventMock(type: .import, startDate: .now, endDate: .now, succeeded: false, error: error)
         syncStatus.setState(from: event)
 
         // Then importError's description is "I don't like clouds"
@@ -42,8 +41,7 @@ final class SyncMonitorTests: XCTestCase {
         // When NSPersistentCloudKitContainer reports an unsuccessful import
         let errorText = "I don't like clouds"
         let error = NSError(domain: errorText, code: 0, userInfo: nil)
-        let event = SyncEvent(type: .export, startDate: Date(), endDate: Date(), succeeded: false,
-                              error: error)
+        let event = SyncEventMock(type: .export, startDate: .now, endDate: .now, succeeded: false, error: error)
         syncStatus.setState(from: event)
 
         // Then exportError's description is "I don't like clouds"
@@ -62,8 +60,7 @@ final class SyncMonitorTests: XCTestCase {
         let syncStatus: SyncMonitor = SyncMonitor(networkAvailable: true, listen: false)
 
         // When NSPersistentCloudKitContainer reports a successful import
-        let event = SyncEvent(type: .import, startDate: Date(), endDate: Date(), succeeded: true,
-                              error: nil)
+        let event = SyncEventMock(type: .import, startDate: .now, endDate: .now, succeeded: true, error: nil)
         syncStatus.setState(from: event)
 
         // Then importError is nil
@@ -82,8 +79,7 @@ final class SyncMonitorTests: XCTestCase {
         let syncStatus: SyncMonitor = SyncMonitor(networkAvailable: true, listen: false)
 
         // When NSPersistentCloudKitContainer reports a successful export
-        let event = SyncEvent(type: .export, startDate: Date(), endDate: Date(), succeeded: true,
-                              error: nil)
+        let event = SyncEventMock(type: .export, startDate: .now, endDate: .now, succeeded: true, error: nil)
         syncStatus.setState(from: event)
 
         // Then exportError is nil
@@ -102,8 +98,7 @@ final class SyncMonitorTests: XCTestCase {
         let syncStatus: SyncMonitor = SyncMonitor(networkAvailable: true, listen: false)
 
         // When NSPersistentCloudKitContainer reports an event with a start date but no end date
-        let event = SyncEvent(type: .export, startDate: Date(), endDate: nil, succeeded: false,
-                              error: nil)
+        let event = SyncEventMock(type: .export, startDate: .now, endDate: nil, succeeded: false, error: nil)
         syncStatus.setState(from: event)
 
         // Then exportError is nil
@@ -140,4 +135,12 @@ final class SyncMonitorTests: XCTestCase {
         ("testSetsStatusToInProgressWhenEventHasNoEndDate", testSetsStatusToInProgressWhenEventHasNoEndDate),
         ("testSetsStatusToNotStartedOnStartup", testSetsStatusToNotStartedOnStartup),
     ]
+}
+
+private struct SyncEventMock: SyncEvent {
+    let type: NSPersistentCloudKitContainer.EventType
+    let startDate: Date
+    let endDate: Date?
+    let succeeded: Bool
+    let error: Error?
 }

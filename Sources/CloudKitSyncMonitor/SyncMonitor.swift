@@ -427,10 +427,10 @@ public final class SyncMonitor {
             .sink(receiveValue: { notification in
                 if let cloudEvent = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                     as? NSPersistentCloudKitContainer.Event {
-                    let event = SyncEvent(from: cloudEvent) // To make testing possible
+                    // To make testing possible
                     // Properties need to be set on the main thread for SwiftUI, so we'll do that here
                     // instead of maing setProperties run async code, which is inconvenient for testing.
-                    DispatchQueue.main.async { self.setState(from: event) }
+                    DispatchQueue.main.async { self.setState(from: cloudEvent) }
                 }
             })
             .store(in: &disposables)

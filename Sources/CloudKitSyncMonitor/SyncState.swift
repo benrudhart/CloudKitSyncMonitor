@@ -41,29 +41,27 @@ public enum SyncState {
     /// Note that this property will report all errors, including those caused by normal things like being offline.
     /// See also `SyncMonitor.importError` and `SyncMonitor.exportError` for more intelligent error reporting.
     var error: Error? {
-        if case let .failed(_,_,error) = self, let e = error {
-            return e
+        switch self {
+        case .notStarted, .inProgress, .succeeded:
+            return nil
+        case .failed(_, _, let error):
+            return error
         }
-        return nil
     }
 }
 
 extension SyncState {
     init(event: SyncEvent) {
-        if let startDate = event.startDate {
-            // NSPersistentCloudKitContainer sends a notification when an event starts, and another when it
-            // ends. If it has an endDate, it means the event finished.
-            if let endDate = event.endDate {
-                if event.succeeded {
-                    self = .succeeded(started: startDate, ended: endDate)
-                } else {
-                    self = .failed(started: startDate, ended: endDate, error: event.error)
-                }
+        // NSPersistentCloudKitContainer sends a notification when an event starts, and another when it
+        // ends. If it has an endDate, it means the event finished.
+        if let endDate = event.endDate {
+            if event.succeeded {
+                self = .succeeded(started: event.startDate, ended: endDate)
             } else {
-                self = .inProgress(started: startDate)
+                self = .failed(started: event.startDate, ended: endDate, error: event.error)
             }
         } else {
-            self = .notStarted
+            self = .inProgress(started: event.startDate)
         }
     }
 }
