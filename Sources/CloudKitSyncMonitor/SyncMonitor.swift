@@ -287,7 +287,20 @@ public final class SyncMonitor {
     /// Contains the last Error encountered.
     ///
     /// This can be helpful in diagnosing "notSyncing" issues or other "partial error"s from which CloudKit thinks it recovered, but didn't really.
-    public private(set) var lastError: Error?
+    public var lastError: Error? {
+        let states = [setupState, importState, exportState]
+        let errorDates = states.compactMap { state in
+            if case let .failed(_, endDate, error) = state {
+                return (date: endDate, error: error)
+            } else {
+                return nil
+            }
+        }
+
+        return errorDates
+            .sorted { $0.date > $1.date }
+            .first?.error
+    }
 
     // MARK: - Listeners -
 
@@ -315,7 +328,6 @@ public final class SyncMonitor {
         self.exportState = exportState
         self.networkAvailable = networkAvailable
         self.iCloudAccountStatus = iCloudAccountStatus ?? .couldNotDetermine
-        self.lastError = lastErrorText.map { NSError(domain: $0, code: 0, userInfo: nil) }
 
         guard listen else { return }
 
@@ -392,10 +404,6 @@ public final class SyncMonitor {
             exportState = state
         @unknown default:
             assertionFailure("NSPersistentCloudKitContainer added a new event type.")
-        }
-
-        if let error = event.error {
-            lastError = error
         }
     }
 }
