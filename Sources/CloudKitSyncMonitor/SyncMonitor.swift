@@ -140,7 +140,10 @@ public final class SyncMonitor {
         guard case .available = iCloudAccountStatus else { return .accountNotAvailable }
         if syncError { return .error }
         if notSyncing { return .notSyncing }
-        if case .notStarted = importState, case .notStarted = exportState, case .notStarted = setupState {
+
+        if case .notStarted = importState,
+           case .notStarted = exportState,
+           case .notStarted = setupState {
             return .notStarted
         }
 
@@ -148,9 +151,11 @@ public final class SyncMonitor {
         if case .inProgress = importState { return .inProgress }
         if case .inProgress = exportState { return .inProgress }
 
-        if case .succeeded = importState, case .succeeded = exportState {
+        if case .succeeded = importState, 
+            case .succeeded = exportState {
             return .succeeded
         }
+
         return .unknown
     }
 
@@ -181,7 +186,9 @@ public final class SyncMonitor {
     ///
     /// That is, the user's iCloud account status is "available", the network is available, there are no recorded sync errors, and setup is complete and succeeded.
     public var shouldBeSyncing: Bool {
-        if case .available = iCloudAccountStatus, self.networkAvailable == true, !syncError,
+        if case .available = iCloudAccountStatus,
+           networkAvailable == true,
+           !syncError,
            case .succeeded = setupState {
             return true
         }
@@ -275,10 +282,7 @@ public final class SyncMonitor {
     public private(set) var loggedIntoIcloud: Bool? = nil
 
     /// The current status of the user's iCloud account - updated automatically if they change it
-    public private(set) var iCloudAccountStatus: CKAccountStatus?
-
-    /// If an error was encountered when retrieving the user's account status, this will be non-nil
-    public private(set) var iCloudAccountStatusUpdateError: Error?
+    public private(set) var iCloudAccountStatus: CKAccountStatus
 
     // MARK: - Diagnosis properties -
 
@@ -291,6 +295,7 @@ public final class SyncMonitor {
 
     /// Where we store Combine cancellables for publishers we're listening to, e.g. NSPersistentCloudKitContainer's notifications.
     private var disposables = Set<AnyCancellable>()
+    private var observeTask: Task<Void, Never>?
 
     /// Network path monitor that's used to track whether we can reach the network at all
     //    fileprivate let monitor: NetworkMonitor = NWPathMonitor()
@@ -313,14 +318,16 @@ public final class SyncMonitor {
         self.importState = importState
         self.exportState = exportState
         self.networkAvailable = networkAvailable
-        self.iCloudAccountStatus = iCloudAccountStatus
+        self.iCloudAccountStatus = iCloudAccountStatus ?? .couldNotDetermine
         self.lastError = lastErrorText.map { NSError(domain: $0, code: 0, userInfo: nil) }
 
         guard listen else { return }
 
-        setupCloudKitStateListener()
-        setupNetworkStateListener()
-        setupiCloudAccountStateListener()
+        observeTask = Task {
+            setupCloudKitStateListener()
+            setupNetworkStateListener()
+            await setupiCloudAccountStateListener()
+        }
     }
 
     private func setupCloudKitStateListener() {
@@ -359,30 +366,15 @@ public final class SyncMonitor {
     }
 
     /// Monitor changes to the iCloud account (e.g. login/logout)
-    private func setupiCloudAccountStateListener() {
-        self.updateiCloudAccountStatus()
+    private func setupiCloudAccountStateListener() async  {
+        self.iCloudAccountStatus = (try? await CKContainer.default().accountStatus()) ?? .couldNotDetermine
 
-        NotificationCenter.default.publisher(for: .CKAccountChanged)
-            .debounce(for: 0.5, scheduler: DispatchQueue.main)
-            .sink(receiveValue: { notification in
-                self.updateiCloudAccountStatus()
-            })
-            .store(in: &disposables)
-    }
+        let stateStream = NotificationCenter.default
+            .notifications(named: .CKAccountChanged)
+            .map { _ in (try? await CKContainer.default().accountStatus()) ?? .couldNotDetermine }
 
-    /// Checks the current status of the user's iCloud account and updates our iCloudAccountStatus property
-    ///
-    /// When SyncMonitor is listening to notifications (which it does unless you tell it not to when initializing), this method is called each time CKContainer
-    /// fires off a `.CKAccountChanged` notification.
-    private func updateiCloudAccountStatus() {
-        CKContainer.default().accountStatus { (accountStatus, error) in
-            DispatchQueue.main.async {
-                if let e = error {
-                    self.iCloudAccountStatusUpdateError = e
-                } else {
-                    self.iCloudAccountStatus = accountStatus
-                }
-            }
+        for await stateResult in stateStream {
+            self.iCloudAccountStatus = stateResult
         }
     }
 
