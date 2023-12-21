@@ -302,8 +302,10 @@ public final class SyncMonitor {
     // MARK: - Initializers -
 
     /// Creates a new sync monitor and sets up listeners to sync and network changes
-    public init(setupState: SyncState = .notStarted, importState: SyncState = .notStarted,
-                exportState: SyncState = .notStarted, networkAvailable: Bool? = nil,
+    public init(setupState: SyncState = .notStarted, 
+                importState: SyncState = .notStarted,
+                exportState: SyncState = .notStarted, 
+                networkAvailable: Bool? = nil,
                 iCloudAccountStatus: CKAccountStatus? = nil,
                 lastErrorText: String? = nil,
                 listen: Bool = true) {
@@ -312,12 +314,16 @@ public final class SyncMonitor {
         self.exportState = exportState
         self.networkAvailable = networkAvailable
         self.iCloudAccountStatus = iCloudAccountStatus
-        if let e = lastErrorText {
-            self.lastError = NSError(domain: e, code: 0, userInfo: nil)
-        }
+        self.lastError = lastErrorText.map { NSError(domain: $0, code: 0, userInfo: nil) }
 
         guard listen else { return }
 
+        setupCloudKitStateListener()
+        setupNetworkStateListener()
+        setupiCloudAccountStateListener()
+    }
+
+    private func setupCloudKitStateListener() {
         // Monitor NSPersistentCloudKitContainer sync events
         NotificationCenter.default.publisher(for: NSPersistentCloudKitContainer.eventChangedNotification)
             .sink(receiveValue: { notification in
@@ -330,14 +336,16 @@ public final class SyncMonitor {
                 }
             })
             .store(in: &disposables)
+    }
 
-        // Update the network status when the OS reports a change. Note that we ignore whether the connection is
-        // expensive or not - we just care whether iCloud is _able_ to sync. If there's no network,
-        // NSPersistentCloudKitContainer will try to sync but report an error. We consider that a real error unless
-        // the network is not available at all. If it's available but expensive, it's still an error.
-        // Obstensively, if the user's device has iCloud syncing turned off (e.g. due to low power mode or not
-        // allowing syncing over cellular connections), NSPersistentCloudKitContainer won't try to sync.
-        // If that assumption is incorrect, we'll need to update the logic in this class.
+    /// Update the network status when the OS reports a change. Note that we ignore whether the connection is
+    /// expensive or not - we just care whether iCloud is _able_ to sync. If there's no network,
+    /// NSPersistentCloudKitContainer will try to sync but report an error. We consider that a real error unless
+    /// the network is not available at all. If it's available but expensive, it's still an error.
+    /// Ostensively, if the user's device has iCloud syncing turned off (e.g. due to low power mode or not
+    /// allowing syncing over cellular connections), NSPersistentCloudKitContainer won't try to sync.
+    /// If that assumption is incorrect, we'll need to update the logic in this class.
+    private func setupNetworkStateListener() {
         monitor.pathUpdateHandler = { path in
             DispatchQueue.main.async {
                 #if os(watchOS)
@@ -348,9 +356,12 @@ public final class SyncMonitor {
             }
         }
         monitor.start(queue: monitorQueue)
+    }
 
-        // Monitor changes to the iCloud account (e.g. login/logout)
+    /// Monitor changes to the iCloud account (e.g. login/logout)
+    private func setupiCloudAccountStateListener() {
         self.updateiCloudAccountStatus()
+
         NotificationCenter.default.publisher(for: .CKAccountChanged)
             .debounce(for: 0.5, scheduler: DispatchQueue.main)
             .sink(receiveValue: { notification in
