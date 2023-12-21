@@ -430,7 +430,7 @@ public final class SyncMonitor {
                     let event = SyncEvent(from: cloudEvent) // To make testing possible
                     // Properties need to be set on the main thread for SwiftUI, so we'll do that here
                     // instead of maing setProperties run async code, which is inconvenient for testing.
-                    DispatchQueue.main.async { self.setProperties(from: event) }
+                    DispatchQueue.main.async { self.setState(from: event) }
                 }
             })
             .store(in: &disposables)
@@ -506,20 +506,8 @@ public final class SyncMonitor {
     // MARK: - Processing NSPersistentCloudKitContainer events -
 
     /// Set the appropriate State property (importState, exportState, setupState) based on the provided event
-    internal func setProperties(from event: SyncEvent) {
-        // First, set the SyncState for the event
-        var state: SyncState = .notStarted
-        // NSPersistentCloudKitContainer sends a notification when an event starts, and another when it
-        // ends. If it has an endDate, it means the event finished.
-        if let startDate = event.startDate, event.endDate == nil {
-            state = .inProgress(started: startDate)
-        } else if let startDate = event.startDate, let endDate = event.endDate {
-            if event.succeeded {
-                state = .succeeded(started: startDate, ended: endDate)
-            } else {
-                state = .failed(started: startDate, ended: endDate, error: event.error)
-            }
-        }
+    func setState(from event: SyncEvent) {
+        let state = SyncState(event: event)
 
         switch event.type {
         case .setup:
@@ -532,8 +520,8 @@ public final class SyncMonitor {
             assertionFailure("NSPersistentCloudKitContainer added a new event type.")
         }
 
-        if event.error != nil {
-            lastError = event.error
+        if let error = event.error {
+            lastError = error
         }
     }
 }

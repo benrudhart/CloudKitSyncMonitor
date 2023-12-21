@@ -22,7 +22,7 @@ final class SyncMonitorTests: XCTestCase {
         let error = NSError(domain: errorText, code: 0, userInfo: nil)
         let event = SyncEvent(type: .import, startDate: Date(), endDate: Date(), succeeded: false,
                               error: error)
-        syncStatus.setProperties(from: event)
+        syncStatus.setState(from: event)
 
         // Then importError's description is "I don't like clouds"
         XCTAssertEqual(syncStatus.importError?.localizedDescription, error.localizedDescription)
@@ -44,7 +44,7 @@ final class SyncMonitorTests: XCTestCase {
         let error = NSError(domain: errorText, code: 0, userInfo: nil)
         let event = SyncEvent(type: .export, startDate: Date(), endDate: Date(), succeeded: false,
                               error: error)
-        syncStatus.setProperties(from: event)
+        syncStatus.setState(from: event)
 
         // Then exportError's description is "I don't like clouds"
         XCTAssertEqual(syncStatus.exportError?.localizedDescription, error.localizedDescription)
@@ -64,7 +64,7 @@ final class SyncMonitorTests: XCTestCase {
         // When NSPersistentCloudKitContainer reports a successful import
         let event = SyncEvent(type: .import, startDate: Date(), endDate: Date(), succeeded: true,
                               error: nil)
-        syncStatus.setProperties(from: event)
+        syncStatus.setState(from: event)
 
         // Then importError is nil
         XCTAssert(syncStatus.importError == nil)
@@ -84,7 +84,7 @@ final class SyncMonitorTests: XCTestCase {
         // When NSPersistentCloudKitContainer reports a successful export
         let event = SyncEvent(type: .export, startDate: Date(), endDate: Date(), succeeded: true,
                               error: nil)
-        syncStatus.setProperties(from: event)
+        syncStatus.setState(from: event)
 
         // Then exportError is nil
         XCTAssert(syncStatus.exportError == nil)
@@ -104,7 +104,7 @@ final class SyncMonitorTests: XCTestCase {
         // When NSPersistentCloudKitContainer reports an event with a start date but no end date
         let event = SyncEvent(type: .export, startDate: Date(), endDate: nil, succeeded: false,
                               error: nil)
-        syncStatus.setProperties(from: event)
+        syncStatus.setState(from: event)
 
         // Then exportError is nil
         XCTAssert(syncStatus.exportError == nil)

@@ -47,3 +47,23 @@ public enum SyncState {
         return nil
     }
 }
+
+extension SyncState {
+    init(event: SyncEvent) {
+        if let startDate = event.startDate {
+            // NSPersistentCloudKitContainer sends a notification when an event starts, and another when it
+            // ends. If it has an endDate, it means the event finished.
+            if let endDate = event.endDate {
+                if event.succeeded {
+                    self = .succeeded(started: startDate, ended: endDate)
+                } else {
+                    self = .failed(started: startDate, ended: endDate, error: event.error)
+                }
+            } else {
+                self = .inProgress(started: startDate)
+            }
+        } else {
+            self = .notStarted
+        }
+    }
+}
