@@ -19,7 +19,7 @@ extension SyncSummaryStatus {
         case .noNetwork:
             return "bolt.horizontal.icloud"
         case .accountNotAvailable:
-            return "lock.icloud"
+            return "icloud.slash"
         case .error:
             return "exclamationmark.icloud"
         case .notSyncing:
@@ -27,11 +27,11 @@ extension SyncSummaryStatus {
         case .notStarted:
             return "bolt.horizontal.icloud"
         case .inProgress:
-            return "arrow.clockwise.icloud"
+            return "arrow.triangle.2.circlepath.icloud"
         case .succeeded:
-            return "icloud"
+            return "checkmark.icloud"
         case .unknown:
-            return "icloud.slash"
+            return "bolt.horizontal.icloud"
         }
     }
 
