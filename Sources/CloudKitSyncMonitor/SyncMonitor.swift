@@ -5,10 +5,8 @@
 //  Created by Grant Grueninger on 9/23/20.
 //
 
-import Combine
 import CoreData
 import Network
-import SwiftUI
 import CloudKit
 
 /// An object, usually used as a singleton, that provides, and publishes, the current state of `NSPersistentCloudKitContainer`'s sync
@@ -293,8 +291,6 @@ public final class SyncMonitor {
 
     // MARK: - Listeners -
 
-    /// Where we store Combine cancellables for publishers we're listening to, e.g. NSPersistentCloudKitContainer's notifications.
-    private var disposables = Set<AnyCancellable>()
     private var observeTask: Task<Void, Never>?
 
     /// Network path monitor that's used to track whether we can reach the network at all
@@ -324,25 +320,28 @@ public final class SyncMonitor {
         guard listen else { return }
 
         observeTask = Task {
-            setupCloudKitStateListener()
-            setupNetworkStateListener()
+            await setupCloudKitStateListener()
             await setupiCloudAccountStateListener()
+            setupNetworkStateListener()
         }
     }
 
-    private func setupCloudKitStateListener() {
+    /// To make testing possible
+    /// Properties need to be set on the main thread for SwiftUI, so we'll do that here
+    /// instead of maing setProperties run async code, which is inconvenient for testing.
+    @MainActor
+    private func setupCloudKitStateListener() async {
         // Monitor NSPersistentCloudKitContainer sync events
-        NotificationCenter.default.publisher(for: NSPersistentCloudKitContainer.eventChangedNotification)
-            .sink(receiveValue: { notification in
-                if let cloudEvent = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
-                    as? NSPersistentCloudKitContainer.Event {
-                    // To make testing possible
-                    // Properties need to be set on the main thread for SwiftUI, so we'll do that here
-                    // instead of maing setProperties run async code, which is inconvenient for testing.
-                    DispatchQueue.main.async { self.setState(from: cloudEvent) }
-                }
-            })
-            .store(in: &disposables)
+        let eventStream = NotificationCenter.default
+            .notifications(named: NSPersistentCloudKitContainer.eventChangedNotification)
+            .compactMap { notification in
+                let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
+                return event as? NSPersistentCloudKitContainer.Event
+            }
+
+        for await event in eventStream {
+            setState(from: event)
+        }
     }
 
     /// Update the network status when the OS reports a change. Note that we ignore whether the connection is
