@@ -333,10 +333,16 @@ public final class SyncMonitor {
 
         guard listen else { return }
 
+        observeStates()
+    }
+
+    func observeStates() {
+        networkMonitor.startObserving()
+        
         observeTask = Task {
-            await setupCloudKitStateListener()
-            await setupiCloudAccountStateListener()
-            networkMonitor.startObserving()
+            async let cloudKitState = setupCloudKitStateListener()
+            async let iCloudState = setupiCloudAccountStateListener()
+            await _ = (cloudKitState, iCloudState)
         }
     }
 

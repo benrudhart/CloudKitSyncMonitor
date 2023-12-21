@@ -61,7 +61,7 @@ extension SyncState {
         }
     }
 
-    init(event: SyncEvent) {
+    internal init(event: SyncEvent) {
         // NSPersistentCloudKitContainer sends a notification when an event starts, and another when it
         // ends. If it has an endDate, it means the event finished.
         if let endDate = event.endDate {
