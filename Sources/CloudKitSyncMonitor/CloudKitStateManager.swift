@@ -3,7 +3,7 @@ import CloudKit
 import CoreData
 
 @Observable
-public final class CloudStateManager {
+public final class CloudKitStateManager: CloudKitStateObserver {
     public func syncState(stateType: NSPersistentCloudKitContainer.EventType) -> SyncState {
         switch stateType {
         case .setup:
@@ -40,7 +40,7 @@ public final class CloudStateManager {
             .first?.error
     }
 
-    var syncStateSummary: SyncSummaryStatus {
+    public var syncStateSummary: SyncSummaryStatus {
         if let lastError {
             return .error
         }
@@ -68,7 +68,7 @@ public final class CloudStateManager {
 
     init() {}
 
-    func observeSyncStates() {
+    public func observeSyncStates() {
         observeTask?.cancel()
         observeTask = Task { await setupCloudKitStateListener() }
     }
