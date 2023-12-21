@@ -133,25 +133,34 @@ public final class SyncMonitor {
     ///     }
     ///
     public var syncStateSummary: SyncSummaryStatus {
-        if isNetworkAvailable == false { return .noNetwork }
-        guard case .available = iCloudAccountStatus else { return .accountNotAvailable }
-        if syncError { return .error }
-        if notSyncing { return .notSyncing }
+        if isNetworkAvailable == false {
+            return .noNetwork
+        }
 
-        if case .notStarted = importState,
-           case .notStarted = exportState,
-           case .notStarted = setupState {
+        if iCloudAccountStatus != .available {
+            return .accountNotAvailable
+        }
+        
+        if syncError {
+            return .error
+        }
+        
+        if notSyncing {
+            return .notSyncing
+        }
+
+        if allSyncStates.allSatisfy({ $0.notStarted }) {
             return .notStarted
         }
 
-        if case .inProgress = setupState { return .inProgress }
-        if case .inProgress = importState { return .inProgress }
-        if case .inProgress = exportState { return .inProgress }
+        if allSyncStates.contains(where: { $0.inProgress }) {
+            return .inProgress
+        }
 
-        if case .succeeded = importState, 
-            case .succeeded = exportState {
+        if allSyncStates.allSatisfy({ $0.succeeded }) {
             return .succeeded
         }
+
 
         return .unknown
     }

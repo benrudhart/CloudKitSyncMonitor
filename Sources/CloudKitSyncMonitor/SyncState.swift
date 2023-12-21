@@ -13,6 +13,9 @@ public enum SyncState {
 
     /// The last sync of this type finished but failed (`succeeded` was `false` in the notification from `NSPersistentCloudKitContainer`).
     case failed(started: Date, ended: Date, error: Error?)
+}
+
+extension SyncState {
 
     /// Convenience property that returns true if the last sync of this type succeeded
     ///
@@ -23,10 +26,19 @@ public enum SyncState {
         return false
     }
 
+    var notStarted: Bool {
+        if case .notStarted = self { return true }
+        return false
+    }
+
+    var inProgress: Bool {
+        if case .inProgress = self { return true }
+        return false
+    }
+
     /// Convenience property that returns true if the last sync of this type failed
     var failed: Bool {
-        if case .failed = self { return true }
-        return false
+        error != nil
     }
 
     /// Convenience property that returns the error returned if the event failed
@@ -48,9 +60,7 @@ public enum SyncState {
             return error
         }
     }
-}
 
-extension SyncState {
     init(event: SyncEvent) {
         // NSPersistentCloudKitContainer sends a notification when an event starts, and another when it
         // ends. If it has an endDate, it means the event finished.
