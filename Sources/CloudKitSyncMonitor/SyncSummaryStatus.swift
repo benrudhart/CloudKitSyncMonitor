@@ -53,7 +53,7 @@ extension SyncSummaryStatus {
         case .succeeded:
             return "Synced with iCloud"
         case .unknown:
-            return "Error"
+            return "Unknown state"
         }
     }
 
