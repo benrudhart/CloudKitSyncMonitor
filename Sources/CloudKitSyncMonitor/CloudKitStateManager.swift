@@ -1,9 +1,9 @@
 import Foundation
 import CloudKit
-import CoreData
+@preconcurrency import CoreData
 
-@Observable
-public final class CloudKitStateManager: CloudKitStateObserver {
+@Observable @MainActor
+public final class CloudKitStateManager: CloudKitStateObserver, Sendable {
     public func syncState(stateType: NSPersistentCloudKitContainer.EventType) -> SyncState {
         switch stateType {
         case .setup:

@@ -1,7 +1,8 @@
 import Foundation
 import Network
 
-protocol NetworkMonitor {
+@MainActor
+protocol NetworkMonitor: Sendable {
     var isNetworkAvailable: Bool { get }
     func startObserving()
 }

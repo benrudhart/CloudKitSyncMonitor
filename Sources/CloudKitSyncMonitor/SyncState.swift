@@ -1,7 +1,7 @@
 import Foundation
 
 /// The state of a CloudKit import, export, or setup event as reported by an `NSPersistentCloudKitContainer` notification
-public enum SyncState {
+public enum SyncState: Sendable {
     /// No event has been reported
     case undetermined
 

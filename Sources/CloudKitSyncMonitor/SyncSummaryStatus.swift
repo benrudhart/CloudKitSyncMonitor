@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Possible values for the summary of the state of iCloud sync
-public enum SyncSummaryStatus {
+public enum SyncSummaryStatus: Sendable {
     case noNetwork
     case accountNotAvailable
     case error(Error)

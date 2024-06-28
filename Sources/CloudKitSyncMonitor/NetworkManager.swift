@@ -1,7 +1,7 @@
 import Foundation
 import Network
 
-@Observable
+@Observable @MainActor
 final class NetworkManager: NetworkMonitor {
     /// Network path monitor that's used to track whether we can reach the network at all
     private let monitor = NWPathMonitor()

@@ -1,8 +1,8 @@
 import Foundation
 import CloudKit
 
-@Observable
-final class CKAccountManager {
+@Observable @MainActor
+final class CKAccountManager: Sendable {
     /// The current status of the user's iCloud account - updated automatically if they change it
     private(set) var accountStatus: CKAccountStatus = .couldNotDetermine
 

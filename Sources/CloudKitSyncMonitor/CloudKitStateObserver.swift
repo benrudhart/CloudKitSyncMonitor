@@ -1,7 +1,8 @@
 import Foundation
 import CoreData
 
-public protocol CloudKitStateObserver {
+@MainActor
+public protocol CloudKitStateObserver: Sendable {
     var setupState: SyncState { get }
     var importState: SyncState { get }
     var exportState: SyncState { get }
